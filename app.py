@@ -2,6 +2,8 @@
 from flask import Flask, request, jsonify, render_template_string
 import subprocess
 import time
+import Adafruit_DHT
+
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -161,6 +163,7 @@ computational_lab_content = """
 """
 
 # HTML content for Temperature Remote Sensing Lab Page
+
 temperature_lab_content = """
 <!DOCTYPE html>
 <html>
@@ -173,21 +176,27 @@ temperature_lab_content = """
 <body>
     <div class="container">
         <h1>Temperature Remote Sensing Lab</h1>
-        <p>Interact with a simulated temperature sensor:</p>
-        <button onclick="simulateTemperatureReading()">Simulate Temperature Reading</button>
+        <p>Real-time temperature and humidity:</p>
+        <button onclick="getTemperatureReading()">Get Temperature Reading</button>
         <div id="temperatureReading"></div>
     </div>
     
     <script>
-        // (Your existing JavaScript code remains the same)
-
-        function simulateTemperatureReading() {
-            // (Implementation for simulating temperature reading)
+        function getTemperatureReading() {
+            fetch("/get_temperature")
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("temperatureReading").innerText = `Temperature: ${data.temperature}`;
+            })
+            .catch(error => {
+                console.error("Error:", error);
+            });
         }
     </script>
 </body>
 </html>
 """
+
 
 # Define routes
 
@@ -230,12 +239,20 @@ def execute_computational_code():
     
 
 # Simulate Temperature Reading
-@app.route("/simulate_temperature", methods=["GET"])
-def simulate_temperature_reading():
-    # (Implementation for simulating temperature reading)
-    temperature_reading = "25.5°C"  # Replace with actual simulation logic
+@app.route("/get_temperature", methods=["GET"])
+def get_temperature_reading():
+    # Read real-time temperature from DHT sensor
+    DHT_SENSOR = Adafruit_DHT.DHT11
+    DHT_PIN = 4
+    humidity, temperature = Adafruit_DHT.read(DHT_SENSOR, DHT_PIN)
+    
+    if humidity is not None and temperature is not None:
+        temperature_reading = f"{temperature:.1f}°C, Humidity: {humidity:.1f}%"
+        return jsonify({"temperature": temperature_reading})
+    else:
+        return jsonify({"error": "Sensor failure. Check wiring."})
 
-    return jsonify({"temperature": temperature_reading})
+
 
 # Run the app
 if __name__ == "__main__":
